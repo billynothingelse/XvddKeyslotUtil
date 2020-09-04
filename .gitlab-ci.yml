@@ -1,0 +1,18 @@
+stages:
+  - build
+
+build:
+  artifacts:
+    name: XvddKeyslotUtil
+    paths:
+      - src\XvddKeyslotUtil\x64\release\
+
+  stage: build
+  script: |
+    $Env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin"
+    msbuild src\XvddKeyslotUtil\XvddKeyslotUtil.vcxproj /p:configuration=release /p:platform=x64
+
+  tags:
+    - shared-windows
+    - windows
+    - windows-1809
