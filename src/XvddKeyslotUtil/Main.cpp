@@ -142,12 +142,6 @@ int main()
 
                         AvailableKeyslots = GuidSlotCount * 2;
 
-                        // Associate KeyID's with respective license
-                        for (int i = 0; i < GuidSlotCount; i++) {
-                            GuidSlots->Data[i].FirstKeyId = i * 2;
-                            GuidSlots->Data[i].SecondKeyId = GuidSlots->Data[i].FirstKeyId + 1;
-                        }
-
                         // Allocate memory for storing keyslots
                         const int Size = sizeof(SCP_KEY_SLOT) * AvailableKeyslots;
                         BYTE* KeySlotBuffer = new BYTE[Size];
