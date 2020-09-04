@@ -6,5 +6,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KeBridge.h" />
+    <ClInclude Include="ScpTypes.h" />
+    <ClInclude Include="Common.h" />
   </ItemGroup>
 </Project>
