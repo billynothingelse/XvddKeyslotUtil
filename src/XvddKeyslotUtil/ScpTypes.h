@@ -28,14 +28,12 @@ struct SCP_LICENSE {
 
 /// <summary>
 /// Represents a slot that contains encryption key
-/// GUID and 4-byte padding. We use this padding to
-/// store the associated keyslot indexes.
+/// GUID and 4-byte padding
 /// </summary>
 struct SCP_GUID_SLOT_CONTENT
 {
     GUID EncryptionKeyGUID;             //! Key associated w/ XVD
-    uint16_t FirstKeyId;                //! Padding
-    uint16_t SecondKeyId;               //! Padding
+    uint32_t Padding;                   //! Padding
 };
 
 struct SCP_GUID_SLOT {

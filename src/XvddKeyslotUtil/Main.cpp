@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
     std::cout << "[+] Getting " << s_XvddDriverName << "base address..." << std::endl;
     if (!GetKernelModuleBase(s_XvddDriverName, &g_XvddBaseAddress)) {
         std::cout << "[-] Unable to get XVDD.sys image base! "
-                  << "Is GamingServices (ProductId: 9mwpm2cqnlhn) installed ?"
+                  << "Is GamingServices (ProductId: 9mwpm2cqnlhn) installed?"
                   << std::endl;
         return -1;
     }
@@ -101,7 +101,6 @@ int main(int argc, char* argv[])
     SCP_GUID_SLOT *GuidSlots = {0};
 
     int GuidSlotCount = 0;
-    int AvailableKeyslots = 0;
 
     std::cout << "[+] Fetching GUID slot table..." << std::endl;
     constexpr int GuidBufferSize = sizeof(SCP_GUID_SLOT);
@@ -111,7 +110,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    GuidSlots = reinterpret_cast<SCP_GUID_SLOT *>(GuidBuffer);
+    GuidSlots = reinterpret_cast<SCP_GUID_SLOT*>(GuidBuffer);
     // Determine current loaded license count
     for (auto guid : GuidSlots->Data) {
         if (guid.EncryptionKeyGUID == GUID_NULL) {
@@ -121,11 +120,9 @@ int main(int argc, char* argv[])
     }
     std::cout << "[+] Found " << GuidSlotCount << " GUID slots!" << std::endl;
 
-    AvailableKeyslots = GuidSlotCount;
-
     std::cout << "[+] Fetching keyslot table..." << std::endl;
-    // Allocate memory for storing keyslots
-    const int Size = sizeof(SCP_KEY_SLOT) * AvailableKeyslots;
+    // Allocate memory for storing keyslots by slot count
+    const int Size = sizeof(SCP_KEY_SLOT) * GuidSlotCount;
     BYTE *KeySlotBuffer = new BYTE[Size];
     if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlotBuffer), g_XvddKeyslotAddress, Size)) {
         std::cout << "[-] Failed to fetch keyslot table!" << std::endl;
@@ -160,6 +157,7 @@ int main(int argc, char* argv[])
     }
 
     // Cleanup
+    delete[] GuidBuffer;
     delete[] KeySlotBuffer;
 
     return 0;
