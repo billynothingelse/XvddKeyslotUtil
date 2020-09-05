@@ -31,6 +31,12 @@ int main(int argc, char* argv[])
 {
     cmdline::parser cmd;
 
+    cmd.add<std::string>(
+        "help",
+        'h',
+        "print usage"
+    );
+
     cmd.add<std::filesystem::path>(
         "output",
         'o',
@@ -49,6 +55,11 @@ int main(int argc, char* argv[])
 
     std::cout << s_UtilName << " " << XVDD_KEYSLOT_UTIL_VERSION << std::endl;
     cmd.parse_check(argc, argv);
+
+    std::string help_message = cmd.get<std::string>("help");
+    if (!help_message.empty()) {
+        cmd.usage();
+    }
 
     std::cout << "[+] Checking if running with elevated privileges..." << std::endl;
     if (!IsProcessElevated()) {
