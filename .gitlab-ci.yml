@@ -2,7 +2,7 @@ variables:
   VS_BIN_DIR: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin
   VERSIONHEADER_FILE: src\XvddKeyslotUtil\version.h
   PROJ_FILE: src\XvddKeyslotUtil\XvddKeyslotUtil.vcxproj
-  EXE_PATH: bin\x64\release\XvddKeyslotUtil.exe
+  EXE_PATH: bin\x64\Release\XvddKeyslotUtil.exe
   KB_DRIVER_RELEASE_ZIP_URL: https://github.com/HoShiMin/Kernel-Bridge/releases/latest/download/Kernel-Bridge.zip
   KB_TARGET_ZIP: KB.zip
   KB_EXTRACT_DRIVER_PATH: x64/Release
