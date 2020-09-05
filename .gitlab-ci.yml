@@ -3,14 +3,15 @@ stages:
 
 build:
   artifacts:
-    name: XvddKeyslotUtil
+    name: XvddKeyslotUtil-CI
     paths:
-      - src\XvddKeyslotUtil\x64\release\XvddKeyslotUtil.exe
+      - XvddKeyslotUtil.exe
 
   stage: build
   script: |
     $Env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin"
     msbuild src\XvddKeyslotUtil\XvddKeyslotUtil.vcxproj /p:configuration=release /p:platform=x64
+    COPY src\XvddKeyslotUtil\x64\release\XvddKeyslotUtil.exe .
 
   tags:
     - shared-windows
