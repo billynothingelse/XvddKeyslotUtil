@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "cmdline.h"
 #include "Common.h"
 #include "KeBridge.h"
 #include "ScpTypes.h"
@@ -18,12 +19,49 @@ PVOID g_XvddBaseAddress = NULL;
 PVOID g_XvddKeyslotAddress = NULL;
 PVOID g_XvddGuidSlotAddress = NULL;
 
+std::wstring g_DriverPath;
+std::filesystem::path g_OutputPath;
+
 std::vector<SCP_KEY_SLOT*> g_KeySlots;
 std::vector<SCP_LICENSE> g_Licenses;
 
-int main()
+int main(int argc, char* argv[])
 {
-    std::ofstream stream;
+    cmdline::parser cmd;
+
+    cmd.add<std::filesystem::path>(
+        "cik", 
+        'o', 
+        "output path for *.cik files", 
+        false, 
+        std::filesystem::current_path()
+    );
+
+    cmd.add<std::filesystem::path>(
+        "kb", 
+        'd', 
+        "kernel-bridge driver path",
+        false,
+        std::filesystem::current_path().append("kernel-bridge.sys")
+    );
+
+    cmd.parse_check(argc, argv);
+
+    g_OutputPath = cmd.get<std::filesystem::path>("cik");
+
+    std::filesystem::path tmpPath = cmd.get<std::filesystem::path>("kb");
+    std::string tmpPathString = tmpPath.string();
+    g_DriverPath = std::wstring(tmpPathString.begin(), tmpPathString.end());
+    
+    // Remove previous driver
+    KbDeleteDriver(s_KbDriverName);
+
+    if (!KbInstallDriver(g_DriverPath.c_str(), s_KbDriverName)) {
+        std::cout << "Failed to install Kernel-Bridge driver!" << std::endl;
+        printf("Last error: %d\n", GetLastError());
+        return 1;
+    }
+
     HANDLE hDriver = KbOpenHandle();
 
     if (hDriver == INVALID_HANDLE_VALUE) {
@@ -89,8 +127,8 @@ int main()
                     exportLicense.DataKey = DataKey;
                     exportLicense.TweakKey = TweakKey;
 
-                    std::string cpath = std::filesystem::current_path().string() + "\\";
-                    std::string filename = cpath + GuidToString(exportLicense.KeyGUID) + ".cik";
+                    std::filesystem::path tmp_path = g_OutputPath;
+                    std::string filename = tmp_path.append(GuidToString(exportLicense.KeyGUID) + ".cik").string();
                     FILE* f = NULL;
                     fopen_s(&f, filename.c_str(), "w");
                     fwrite(&exportLicense, sizeof(SCP_LICENSE), 1, f);
