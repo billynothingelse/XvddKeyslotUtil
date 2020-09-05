@@ -18,6 +18,6 @@ BOOL KbInstallDriver(LPCWSTR FilePath, LPCWSTR DriverName, DWORD DriverType = SE
 
 BOOL KbDeleteDriver(LPCWSTR DriverName);
 
-HANDLE KbOpenHandle(LPCWSTR DeviceName = L"\\\\.\\Kernel-Bridge");
+HANDLE KbOpenHandle(LPCWSTR DeviceName = s_KbDeviceName);
 
 BOOL ReadKernelMemory(HANDLE hDriver, OUT PVOID Dest, IN PVOID Src, IN ULONG Size);
