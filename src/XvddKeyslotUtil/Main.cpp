@@ -12,7 +12,9 @@
 #include "Common.h"
 #include "KeBridge.h"
 #include "ScpTypes.h"
+#include "version.h"
 
+static constexpr const char* s_UtilName = "XvddKeyslotUtil";
 static constexpr const char* s_XvddDriverName = "xvdd.sys";
 
 PVOID g_XvddBaseAddress = NULL;
@@ -45,6 +47,7 @@ int main(int argc, char* argv[])
         std::filesystem::current_path().append("kernel-bridge.sys")
     );
 
+    std::cout << s_UtilName << " " << XVDD_KEYSLOT_UTIL_VERSION << std::endl;
     cmd.parse_check(argc, argv);
 
     g_OutputPath = cmd.get<std::filesystem::path>("output");
