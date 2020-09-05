@@ -1,15 +1,51 @@
 variables:
   VS_BIN_DIR: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin
+  VERSIONHEADER_FILE: src\XvddKeyslotUtil\version.h
   PROJ_FILE: src\XvddKeyslotUtil\XvddKeyslotUtil.vcxproj
   EXE_PATH: src\XvddKeyslotUtil\x64\release\XvddKeyslotUtil.exe
   KB_DRIVER_RELEASE_ZIP_URL: https://github.com/HoShiMin/Kernel-Bridge/releases/latest/download/Kernel-Bridge.zip
   KB_TARGET_ZIP: KB.zip
-  KB_EXTRACT_DRIVER_PATH: x64\release
+  KB_EXTRACT_DRIVER_PATH: x64/Release
 
 stages:
   - build
+  - download_driver
+  - create_final_artifact
+  - draft_release
 
 build:
+  artifacts:
+    paths:
+      - XvddKeyslotUtil.exe
+
+  stage: build
+  script: |
+    $Env:Path += ";$env:VS_BIN_DIR"
+    '#pragma once' | Out-File -FilePath $env:VERSIONHEADER_FILE
+    '#define XVDD_KEYSLOT_UTIL_VERSION "' + $env:CI_COMMIT_TAG + '-' + $env:CI_COMMIT_SHORT_SHA + '"' | Out-File -FilePath $env:VERSIONHEADER_FILE -Append
+    type $env:VERSIONHEADER_FILE
+    msbuild $env:PROJ_FILE /p:configuration=release /p:platform=x64
+    COPY $env:EXE_PATH .
+
+  tags:
+    - shared-windows
+    - windows
+    - windows-1809
+
+download_driver:
+  artifacts:
+    paths:
+      - Kernel-Bridge.sys
+      - Kernel-Bridge.inf
+  stage: download_driver
+  script: |
+    wget -O $KB_TARGET_ZIP $KB_DRIVER_RELEASE_ZIP_URL
+    file $KB_TARGET_ZIP
+    unzip $KB_TARGET_ZIP
+    cp $KB_EXTRACT_DRIVER_PATH/Kernel-Bridge.sys .
+    cp $KB_EXTRACT_DRIVER_PATH/Kernel-Bridge.inf .
+
+create_final_artifact:
   artifacts:
     name: XvddKeyslotUtil-CI
     paths:
@@ -17,18 +53,28 @@ build:
       - README.md
       - Kernel-Bridge.sys
       - Kernel-Bridge.inf
+  stage: create_final_artifact
+  script: echo 'Creating final artifacts archive'
+  needs:
+    - job: build
+      artifacts: true
+    - job: download_driver
+      artifacts: true
 
-  stage: build
-  script: |
-    $Env:Path += ";$env:VS_BIN_DIR"
-    msbuild $env:PROJ_FILE /p:configuration=release /p:platform=x64
-    COPY $env:EXE_PATH .
-    Invoke-WebRequest $env:KB_DRIVER_RELEASE_ZIP_URL -OutFile $env:KB_TARGET_ZIP
-    Expand-Archive $env:KB_TARGET_ZIP .
-    COPY $env:KB_EXTRACT_DRIVER_PATH\Kernel-Bridge.sys .
-    COPY $env:KB_EXTRACT_DRIVER_PATH\Kernel-Bridge.inf .
-
-  tags:
-    - shared-windows
-    - windows
-    - windows-1809
+draft_release:
+  stage: draft_release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG                  # Run this job when a tag is created manually
+  script:
+    - echo 'running release_job'
+  release:
+      name: 'Release $CI_COMMIT_TAG'
+      description: 'Automated CI release'
+      tag_name: '$CI_COMMIT_TAG'
+      ref: '$CI_COMMIT_TAG'
+  needs:
+    - job: build
+      artifacts: true
+    - job: download_driver
+      artifacts: true
