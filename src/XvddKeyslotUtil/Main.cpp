@@ -1,7 +1,10 @@
 #include <devioctl.h>
 #include <iomanip>
 #include <iostream>
+#include <filesystem>
+#include <fstream>
 #include <sstream>
+#include <stdio.h>
 #include <string>
 #include <vector>
 
@@ -20,7 +23,9 @@ std::vector<SCP_LICENSE> g_Licenses;
 
 int main()
 {
+    std::ofstream stream;
     HANDLE hDriver = KbOpenHandle();
+
     if (hDriver == INVALID_HANDLE_VALUE) {
         std::cout << "Unable to open Kernel-Bridge handle!"
             << "Make sure the driver is enabled and running."
@@ -44,38 +49,58 @@ int main()
             int AvailableKeyslots = 0;
 
             constexpr int GuidBufferSize = sizeof(SCP_GUID_SLOT);
-            BYTE GuidBuffer[GuidBufferSize] = { 0 };
-            if (ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(GuidBuffer), g_XvddGuidSlotAddress, GuidBufferSize)) {
-                GuidSlots = reinterpret_cast<SCP_GUID_SLOT*>(GuidBuffer);
-                if (GuidSlots) {
-                    // Determine current loaded license count
-                    for (auto guid : GuidSlots->Data) {
-                        if (guid.EncryptionKeyGUID != GUID_NULL)
-                            GuidSlotCount++;
-                    }
+            BYTE* GuidBuffer = new BYTE[GuidBufferSize];
+            if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(GuidBuffer), g_XvddGuidSlotAddress, GuidBufferSize)) {
+                std::cout << "Failed to fetch GUID slot table!" << std::endl;
+                return -1;
+            }
 
-                    AvailableKeyslots = GuidSlotCount * 2;
-
-                    // Allocate memory for storing keyslots
-                    const int Size = sizeof(SCP_KEY_SLOT) * AvailableKeyslots;
-                    BYTE* KeySlotBuffer = new BYTE[Size];
-                    bool bResult = ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlotBuffer), g_XvddKeyslotAddress, Size);
-                    if (bResult) {
-                        // Iterate through each slot and fetch keys
-                        for (int i = 0; i < GuidSlotCount; i++) {
-                            printf("\nEncryption GUID Slot: %d\n", i);
-                            SCP_KEY_SLOT* KeySlot = reinterpret_cast<SCP_KEY_SLOT*>(KeySlotBuffer + (0x3F0 * i));
-                            g_KeySlots.push_back(KeySlot);
-
-                            SCP_KEY_DATA DataKey = KeySlot->KeyDataBegin[0];
-                            print_bytes("Data Key", DataKey.Data, sizeof(SCP_KEY_DATA));
-                            SCP_KEY_DATA TweakKey = KeySlot->KeyDataEnd[0];
-                            print_bytes("Tweak Key", TweakKey.Data, sizeof(SCP_KEY_DATA));
-                        }
-                    }
-                    // Cleanup
-                    delete[] KeySlotBuffer;
+            GuidSlots = reinterpret_cast<SCP_GUID_SLOT*>(GuidBuffer);
+            if (GuidSlots) {
+                // Determine current loaded license count
+                for (auto guid : GuidSlots->Data) {
+                    if (guid.EncryptionKeyGUID != GUID_NULL)
+                        GuidSlotCount++;
                 }
+
+                AvailableKeyslots = GuidSlotCount * 2;
+
+                // Allocate memory for storing keyslots
+                const int Size = sizeof(SCP_KEY_SLOT) * AvailableKeyslots;
+                BYTE* KeySlotBuffer = new BYTE[Size];
+                if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlotBuffer), g_XvddKeyslotAddress, Size)) {
+                    std::cout << "Failed to fetch keyslot table!" << std::endl;
+                    return -1;
+                }
+
+                // Iterate through each slot and fetch keys
+                for (int i = 0; i < GuidSlotCount; i++) {
+                    printf("\nEncryption GUID Slot: %d\n", i);
+                    SCP_KEY_SLOT* KeySlot = reinterpret_cast<SCP_KEY_SLOT*>(KeySlotBuffer + (0x3F0 * i));
+                    g_KeySlots.push_back(KeySlot);
+
+                    SCP_KEY_DATA DataKey = KeySlot->KeyDataBegin[0];
+                    print_bytes("Data Key", DataKey.Data, sizeof(SCP_KEY_DATA));
+                    SCP_KEY_DATA TweakKey = KeySlot->KeyDataEnd[0];
+                    print_bytes("Tweak Key", TweakKey.Data, sizeof(SCP_KEY_DATA));
+
+                    SCP_LICENSE exportLicense = { 0 };
+                    exportLicense.KeyGUID = GuidSlots[i].Data->EncryptionKeyGUID;
+                    exportLicense.DataKey = DataKey;
+                    exportLicense.TweakKey = TweakKey;
+
+                    std::string cpath = std::filesystem::current_path().string() + "\\";
+                    std::string filename = cpath + GuidToString(exportLicense.KeyGUID) + ".cik";
+                    FILE* f = NULL;
+                    fopen_s(&f, filename.c_str(), "w");
+                    fwrite(&exportLicense, sizeof(SCP_LICENSE), 1, f);
+                    fclose(f);
+
+                    std::cout << "Written to file: " << filename << std::endl;
+                }
+
+                // Cleanup
+                delete[] KeySlotBuffer;
             }
         }
     }

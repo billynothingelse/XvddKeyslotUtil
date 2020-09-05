@@ -22,8 +22,8 @@ struct SCP_KEY_SLOT {
 /// </summary>
 struct SCP_LICENSE {
     GUID KeyGUID;                       //! EncKey GUID
-    SCP_KEY_DATA FirstKey;              //! AES Tweak Key
-    SCP_KEY_DATA SecondKey;             //! AES Data Key
+    SCP_KEY_DATA TweakKey;              //! AES Tweak Key
+    SCP_KEY_DATA DataKey;             //! AES Data Key
 };
 
 /// <summary>
