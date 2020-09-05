@@ -5,7 +5,7 @@ build:
   artifacts:
     name: XvddKeyslotUtil
     paths:
-      - src\XvddKeyslotUtil\x64\release\
+      - src\XvddKeyslotUtil\x64\release\XvddKeyslotUtil.exe
 
   stage: build
   script: |
