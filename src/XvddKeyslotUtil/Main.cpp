@@ -50,6 +50,12 @@ int main(int argc, char* argv[])
     std::cout << s_UtilName << " " << XVDD_KEYSLOT_UTIL_VERSION << std::endl;
     cmd.parse_check(argc, argv);
 
+    std::cout << "[+] Checking if running with elevated privileges..." << std::endl;
+    if (!IsProcessElevated()) {
+        std::cout << "[-] No elevated privileges found, please run as Administrator!" << std::endl;
+        return -1;
+    }
+
     g_OutputPath = cmd.get<std::filesystem::path>("output");
 
     std::filesystem::path tmpPath = cmd.get<std::filesystem::path>("kb");
@@ -67,7 +73,7 @@ int main(int argc, char* argv[])
     if (!KbInstallDriver(g_DriverPath.c_str(), s_KbDriverName)) {
         std::cout << "[-] Failed to install Kernel-Bridge driver!" << std::endl;
         printf("Last error: %d\n", GetLastError());
-        return 1;
+        return -1;
     }
 
     std::cout << "[+] Opening Kernel-Bridge handle..." << std::endl;
@@ -85,7 +91,7 @@ int main(int argc, char* argv[])
         std::cout << "[-] Unable to get XVDD.sys image base! "
                   << "Is GamingServices (ProductId: 9mwpm2cqnlhn) installed ?"
                   << std::endl;
-        return 1;
+        return -1;
     }
 
     g_XvddKeyslotAddress = static_cast<char *>(g_XvddBaseAddress) + 0x72530;
@@ -115,7 +121,7 @@ int main(int argc, char* argv[])
     }
     std::cout << "[+] Found " << GuidSlotCount << " GUID slots!" << std::endl;
 
-    AvailableKeyslots = GuidSlotCount * 2;
+    AvailableKeyslots = GuidSlotCount;
 
     std::cout << "[+] Fetching keyslot table..." << std::endl;
     // Allocate memory for storing keyslots

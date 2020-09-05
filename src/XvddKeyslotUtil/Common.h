@@ -56,6 +56,34 @@ BOOL GetKernelModuleBase(IN const char* ModuleName, OUT LPVOID* lpAddr)
     return false;
 }
 
+BOOL IsProcessElevated()
+{
+    BOOL bIsElevated = FALSE;
+    HANDLE hToken = NULL;
+    TOKEN_ELEVATION elevation;
+    DWORD dwSize;
+
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+        printf("\n Failed to get Process Token :%d.",GetLastError());
+        goto Cleanup;  // if Failed, we treat as False
+    }
+
+
+    if (!GetTokenInformation(hToken, TokenElevation, &elevation, sizeof(elevation), &dwSize)) {
+        printf("\nFailed to get Token Information :%d.", GetLastError());
+        goto Cleanup;// if Failed, we treat as False
+    }
+
+    bIsElevated = elevation.TokenIsElevated;
+
+    Cleanup:
+    if (hToken) {
+        CloseHandle(hToken);
+        hToken = NULL;
+    }
+    return bIsElevated;
+}
+
 // https://stackoverflow.com/a/27173017
 void print_bytes(const char* title, const unsigned char* data, size_t dataLen, bool format = true) {
     std::cout << title << std::endl;
