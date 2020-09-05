@@ -19,3 +19,5 @@ Use [xvdtool by emoose](https://github.com/emoose/xvdtool).
 #### Reverse engineering XVDD.sys and writing PoC
 ### [tuxuser](https://github.com/tuxuser)
 #### Assisting with reverse engineering, previous research and extending the command line application
+### [emoose](https://github.com/emoose)
+#### Work done with xvdtool and deciphering MSIXVC caveats
