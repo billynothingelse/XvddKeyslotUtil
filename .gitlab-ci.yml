@@ -1,3 +1,11 @@
+variables:
+  VS_BIN_DIR: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin
+  PROJ_FILE: src\XvddKeyslotUtil\XvddKeyslotUtil.vcxproj
+  EXE_PATH: src\XvddKeyslotUtil\x64\release\XvddKeyslotUtil.exe
+  KB_DRIVER_RELEASE_ZIP_URL: https://github.com/HoShiMin/Kernel-Bridge/releases/latest/download/Kernel-Bridge.zip
+  KB_TARGET_ZIP: KB.zip
+  KB_EXTRACT_DRIVER_PATH: x64\release
+
 stages:
   - build
 
@@ -6,12 +14,19 @@ build:
     name: XvddKeyslotUtil-CI
     paths:
       - XvddKeyslotUtil.exe
+      - README.md
+      - Kernel-Bridge.sys
+      - Kernel-Bridge.inf
 
   stage: build
   script: |
-    $Env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin"
-    msbuild src\XvddKeyslotUtil\XvddKeyslotUtil.vcxproj /p:configuration=release /p:platform=x64
-    COPY src\XvddKeyslotUtil\x64\release\XvddKeyslotUtil.exe .
+    $Env:Path += ";$env:VS_BIN_DIR"
+    msbuild $env:PROJ_FILE /p:configuration=release /p:platform=x64
+    COPY $env:EXE_PATH .
+    Invoke-WebRequest $env:KB_DRIVER_RELEASE_ZIP_URL -OutFile $env:KB_TARGET_ZIP
+    Expand-Archive $env:KB_TARGET_ZIP .
+    COPY $env:KB_EXTRACT_DRIVER_PATH\Kernel-Bridge.sys .
+    COPY $env:KB_EXTRACT_DRIVER_PATH\Kernel-Bridge.inf .
 
   tags:
     - shared-windows
