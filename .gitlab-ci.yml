@@ -21,10 +21,10 @@ build:
   stage: build
   script:
     - $Env:Path += ";$env:VS_BIN_DIR"
-    - '#pragma once' | Out-File -FilePath $env:VERSIONHEADER_FILE
-    - '#define XVDD_KEYSLOT_UTIL_VERSION "' + $env:CI_COMMIT_TAG + '-' + $env:CI_COMMIT_SHORT_SHA + '"' | Out-File -FilePath $env:VERSIONHEADER_FILE -Append
-    - '#define COMPILE_TIME "' + Get-Date -UFormat "%A %B/%d/%Y %T %Z" + '"' | Out-File -FilePath $env:VERSIONHEADER_FILE -Append
-    - type $env:VERSIONHEADER_FILE
+    - Set-Content -Path "$env:VERSIONHEADER_FILE" -Value '#pragma once'
+    - Add-Content -Path "$env:VERSIONHEADER_FILE" -Value "$([string]::Concat('#define XVDD_KEYSLOT_UTIL_VERSION "',$(git describe),'"'))"
+    - Add-Content -Path "$env:VERSIONHEADER_FILE" -Value "$([string]::Concat('#define COMPILE_TIME "',$(Get-Date -Format "yyyy-MM-dd HH:mm"),'"'))"
+    - Get-Content -Path "$env:VERSIONHEADER_FILE"
     - msbuild $env:PROJ_FILE /p:configuration=release /p:platform=x64
     - COPY $env:EXE_PATH .
 
@@ -48,14 +48,16 @@ download_driver:
 
 create_final_artifact:
   artifacts:
-    name: XvddKeyslotUtil-CI
+    name: XvddKeyslotUtil-$CI_COMMIT_TAG-$CI_COMMIT_SHORT_SHA
     paths:
       - XvddKeyslotUtil.exe
       - README.md
       - Kernel-Bridge.sys
       - Kernel-Bridge.inf
   stage: create_final_artifact
-  script: echo 'Creating final artifacts archive'
+  script:
+    - echo 'Creating final artifacts archive'
+    - date +"%Y-%m-%d %H:%M:%S" >> README.md
   needs:
     - job: build
       artifacts: true
