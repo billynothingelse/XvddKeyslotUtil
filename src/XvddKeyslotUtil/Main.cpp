@@ -24,8 +24,9 @@ PVOID g_XvddGuidSlotAddress = NULL;
 std::wstring g_DriverPath;
 std::filesystem::path g_OutputPath;
 
-std::vector<SCP_KEY_SLOT*> g_KeySlots;
-std::vector<SCP_LICENSE> g_Licenses;
+SCP_GUID_SLOT GuidSlots[MAX_GUID_SLOTS] = {0};
+
+SCP_KEY_SLOT KeySlots[MAX_GUID_SLOTS] = {0};
 
 int main(int argc, char* argv[])
 {
@@ -34,7 +35,9 @@ int main(int argc, char* argv[])
     cmd.add<std::string>(
         "help",
         'h',
-        "print usage"
+        "print usage",
+        false,
+        ""
     );
 
     cmd.add<std::filesystem::path>(
@@ -109,21 +112,17 @@ int main(int argc, char* argv[])
     g_XvddGuidSlotAddress = static_cast<char *>(g_XvddBaseAddress) + 0x71144;
 
     // Gather current stored licenses
-    SCP_GUID_SLOT *GuidSlots = {0};
-
     int GuidSlotCount = 0;
 
     std::cout << "[+] Fetching GUID slot table..." << std::endl;
-    constexpr int GuidBufferSize = sizeof(SCP_GUID_SLOT);
-    BYTE *GuidBuffer = new BYTE[GuidBufferSize];
-    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(GuidBuffer), g_XvddGuidSlotAddress, GuidBufferSize)) {
+
+    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(GuidSlots), g_XvddGuidSlotAddress, sizeof(GuidSlots))) {
         std::cout << "[-] Failed to fetch GUID slot table!" << std::endl;
         return -1;
     }
 
-    GuidSlots = reinterpret_cast<SCP_GUID_SLOT*>(GuidBuffer);
     // Determine current loaded license count
-    for (auto guid : GuidSlots->Data) {
+    for (auto guid : GuidSlots) {
         if (guid.EncryptionKeyGUID == GUID_NULL) {
             break;
         }
@@ -134,8 +133,7 @@ int main(int argc, char* argv[])
     std::cout << "[+] Fetching keyslot table..." << std::endl;
     // Allocate memory for storing keyslots by slot count
     const int Size = sizeof(SCP_KEY_SLOT) * GuidSlotCount;
-    BYTE *KeySlotBuffer = new BYTE[Size];
-    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlotBuffer), g_XvddKeyslotAddress, Size)) {
+    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlots), g_XvddKeyslotAddress, Size)) {
         std::cout << "[-] Failed to fetch keyslot table!" << std::endl;
         return -1;
     }
@@ -144,16 +142,14 @@ int main(int argc, char* argv[])
     // Iterate through each slot and fetch keys
     for (int i = 0; i < GuidSlotCount; i++) {
         printf("\nEncryption GUID Slot: %d\n", i);
-        SCP_KEY_SLOT *KeySlot = reinterpret_cast<SCP_KEY_SLOT *>(KeySlotBuffer + (0x3F0 * i));
-        g_KeySlots.push_back(KeySlot);
 
-        SCP_KEY_DATA DataKey = KeySlot->KeyDataBegin[0];
+        SCP_KEY_DATA DataKey = KeySlots[i].KeyDataBegin[0];
         print_bytes("Data Key", DataKey.Data, sizeof(SCP_KEY_DATA));
-        SCP_KEY_DATA TweakKey = KeySlot->KeyDataEnd[0];
+        SCP_KEY_DATA TweakKey = KeySlots[i].KeyDataEnd[0];
         print_bytes("Tweak Key", TweakKey.Data, sizeof(SCP_KEY_DATA));
 
         SCP_LICENSE exportLicense = {0};
-        exportLicense.KeyGUID = GuidSlots[i].Data->EncryptionKeyGUID;
+        exportLicense.KeyGUID = GuidSlots[i].EncryptionKeyGUID;
         exportLicense.DataKey = DataKey;
         exportLicense.TweakKey = TweakKey;
 
@@ -168,8 +164,8 @@ int main(int argc, char* argv[])
     }
 
     // Cleanup
-    delete[] GuidBuffer;
-    delete[] KeySlotBuffer;
+    delete[] GuidSlots;
+    delete[] KeySlots;
 
     return 0;
 }
