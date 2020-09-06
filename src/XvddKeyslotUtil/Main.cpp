@@ -56,7 +56,11 @@ int main(int argc, char* argv[])
         std::filesystem::current_path().append("kernel-bridge.sys")
         );
 
-    std::cout << s_UtilName << " " << XVDD_KEYSLOT_UTIL_VERSION << std::endl;
+    std::cout << s_UtilName << " "
+              << XVDD_KEYSLOT_UTIL_VERSION << " "
+              << "(" << COMPILE_TIME << ")"
+              << std::endl;
+
     cmd.parse_check(argc, argv);
 
     std::string help_message = cmd.get<std::string>("help");
