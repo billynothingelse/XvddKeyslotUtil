@@ -132,8 +132,7 @@ int main(int argc, char* argv[])
 
     std::cout << "[+] Fetching keyslot table..." << std::endl;
     // Allocate memory for storing keyslots by slot count
-    const int Size = sizeof(SCP_KEY_SLOT) * GuidSlotCount;
-    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlots), g_XvddKeyslotAddress, Size)) {
+    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlots), g_XvddKeyslotAddress, sizeof(KeySlots))) {
         std::cout << "[-] Failed to fetch keyslot table!" << std::endl;
         return -1;
     }
