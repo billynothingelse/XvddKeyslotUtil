@@ -17,9 +17,9 @@
 static constexpr const char* s_UtilName = "XvddKeyslotUtil";
 static constexpr const char* s_XvddDriverName = "xvdd.sys";
 
-PVOID g_XvddBaseAddress = NULL;
-PVOID g_XvddKeyslotAddress = NULL;
-PVOID g_XvddGuidSlotAddress = NULL;
+PVOID XvddBaseAddress = NULL;
+PVOID XvddKeyslotAddress = NULL;
+PVOID XvddGuidSlotAddress = NULL;
 
 std::wstring g_DriverPath;
 std::filesystem::path g_OutputPath;
@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
         "print usage",
         false,
         ""
-    );
+        );
 
     cmd.add<std::filesystem::path>(
         "output",
@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
         "output path for *.cik files",
         false,
         std::filesystem::current_path()
-    );
+        );
 
     cmd.add<std::filesystem::path>(
         "kb",
@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
         "kernel-bridge driver path (to kernel-bridge.sys)",
         false,
         std::filesystem::current_path().append("kernel-bridge.sys")
-    );
+        );
 
     std::cout << s_UtilName << " " << XVDD_KEYSLOT_UTIL_VERSION << std::endl;
     cmd.parse_check(argc, argv);
@@ -95,28 +95,28 @@ int main(int argc, char* argv[])
 
     if (hDriver == INVALID_HANDLE_VALUE) {
         std::cout << "[-] Unable to open Kernel-Bridge handle! "
-                  << "Make sure the driver is enabled and running."
-                  << std::endl;
+            << "Make sure the driver is enabled and running."
+            << std::endl;
         return -1;
     }
 
     std::cout << "[+] Getting " << s_XvddDriverName << "base address..." << std::endl;
-    if (!GetKernelModuleBase(s_XvddDriverName, &g_XvddBaseAddress)) {
+    if (!GetKernelModuleBase(s_XvddDriverName, &XvddBaseAddress)) {
         std::cout << "[-] Unable to get XVDD.sys image base! "
-                  << "Is GamingServices (ProductId: 9mwpm2cqnlhn) installed?"
-                  << std::endl;
+            << "Is GamingServices (ProductId: 9mwpm2cqnlhn) installed?"
+            << std::endl;
         return -1;
     }
 
-    g_XvddKeyslotAddress = static_cast<char *>(g_XvddBaseAddress) + 0x72530;
-    g_XvddGuidSlotAddress = static_cast<char *>(g_XvddBaseAddress) + 0x71144;
+    XvddKeyslotAddress = static_cast<char*>(XvddBaseAddress) + 0x72530;
+    XvddGuidSlotAddress = static_cast<char*>(XvddBaseAddress) + 0x71144;
 
     // Gather current stored licenses
     int GuidSlotCount = 0;
 
     std::cout << "[+] Fetching GUID slot table..." << std::endl;
 
-    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(GuidSlots), g_XvddGuidSlotAddress, sizeof(GuidSlots))) {
+    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(GuidSlots), XvddGuidSlotAddress, sizeof(GuidSlots))) {
         std::cout << "[-] Failed to fetch GUID slot table!" << std::endl;
         return -1;
     }
@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
 
     std::cout << "[+] Fetching keyslot table..." << std::endl;
     // Allocate memory for storing keyslots by slot count
-    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlots), g_XvddKeyslotAddress, sizeof(KeySlots))) {
+    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlots), XvddKeyslotAddress, sizeof(KeySlots))) {
         std::cout << "[-] Failed to fetch keyslot table!" << std::endl;
         return -1;
     }
@@ -147,14 +147,14 @@ int main(int argc, char* argv[])
         SCP_KEY_DATA TweakKey = KeySlots[i].KeyDataEnd[0];
         print_bytes("Tweak Key", TweakKey.Data, sizeof(SCP_KEY_DATA));
 
-        SCP_LICENSE exportLicense = {0};
+        SCP_LICENSE exportLicense = { 0 };
         exportLicense.KeyGUID = GuidSlots[i].EncryptionKeyGUID;
         exportLicense.DataKey = DataKey;
         exportLicense.TweakKey = TweakKey;
 
         std::filesystem::path tmp_path = g_OutputPath;
         std::string filename = tmp_path.append(GuidToString(exportLicense.KeyGUID) + ".cik").string();
-        FILE *f = NULL;
+        FILE* f = NULL;
         fopen_s(&f, filename.c_str(), "w");
         fwrite(&exportLicense, sizeof(SCP_LICENSE), 1, f);
         fclose(f);

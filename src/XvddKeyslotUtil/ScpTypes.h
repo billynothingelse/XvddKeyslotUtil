@@ -3,7 +3,8 @@
 #define MAX_GUID_SLOTS 255
 
 #pragma pack(push, 1)
-struct SCP_KEY_DATA {
+
+struct SCP_KEY_DATA { 
     BYTE Data[0x10];
 };
 
@@ -38,6 +39,5 @@ struct SCP_GUID_SLOT
     GUID EncryptionKeyGUID;             //! Key associated w/ XVD
     uint32_t Padding;                   //! Padding
 };
-
 #pragma pack(pop)
 
