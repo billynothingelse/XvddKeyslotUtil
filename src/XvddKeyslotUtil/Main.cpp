@@ -32,12 +32,10 @@ int main(int argc, char* argv[])
 {
     cmdline::parser cmd;
 
-    cmd.add<std::string>(
+    cmd.add(
         "help",
-        'h',
-        "print usage",
-        false,
-        ""
+        '\0',
+        "print usage"
         );
 
     cmd.add<std::filesystem::path>(
@@ -159,8 +157,9 @@ int main(int argc, char* argv[])
         std::filesystem::path tmp_path = g_OutputPath;
         std::string filename = tmp_path.append(GuidToString(exportLicense.KeyGUID) + ".cik").string();
         FILE* f = NULL;
-        fopen_s(&f, filename.c_str(), "w");
+        fopen_s(&f, filename.c_str(), "wb");
         fwrite(&exportLicense, sizeof(SCP_LICENSE), 1, f);
+        fflush(f);
         fclose(f);
 
         std::cout << "[+] Written to file: " << filename << std::endl;
