@@ -61,8 +61,7 @@ int main(int argc, char* argv[])
 
     cmd.parse_check(argc, argv);
 
-    std::string help_message = cmd.get<std::string>("help");
-    if (!help_message.empty()) {
+    if (cmd.exist("help")) {
         cmd.usage();
     }
 
