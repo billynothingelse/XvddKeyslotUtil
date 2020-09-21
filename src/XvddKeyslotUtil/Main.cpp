@@ -24,8 +24,9 @@ PVOID XvddGuidSlotAddress = NULL;
 std::wstring g_DriverPath;
 std::filesystem::path g_OutputPath;
 
-SCP_GUID_SLOT GuidSlots[MAX_GUID_SLOTS] = {0};
+int GuidSlotCount = 0;
 
+SCP_GUID_SLOT GuidSlots[MAX_GUID_SLOTS] = {0};
 SCP_KEY_SLOT KeySlots[MAX_GUID_SLOTS] = {0};
 
 int main(int argc, char* argv[])
@@ -109,14 +110,13 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    // Currently using xvdd.sys ver: 10.0.19041.3952
     XvddKeyslotAddress = static_cast<char*>(XvddBaseAddress) + 0x72530;
     XvddGuidSlotAddress = static_cast<char*>(XvddBaseAddress) + 0x71144;
 
-    // Gather current stored licenses
-    int GuidSlotCount = 0;
-
     std::cout << "[+] Fetching GUID slot table..." << std::endl;
 
+    // Fetch GUID slot table
     if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(GuidSlots), XvddGuidSlotAddress, sizeof(GuidSlots))) {
         std::cout << "[-] Failed to fetch GUID slot table!" << std::endl;
         return -1;
@@ -132,7 +132,8 @@ int main(int argc, char* argv[])
     std::cout << "[+] Found " << GuidSlotCount << " GUID slots!" << std::endl;
 
     std::cout << "[+] Fetching keyslot table..." << std::endl;
-    // Allocate memory for storing keyslots by slot count
+
+    // Fetch keyslot table
     if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(KeySlots), XvddKeyslotAddress, sizeof(KeySlots))) {
         std::cout << "[-] Failed to fetch keyslot table!" << std::endl;
         return -1;
