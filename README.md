@@ -1,23 +1,18 @@
 # XvddKeyslotUtil
-Dump the CIK (Content Instance Key) for current registered MSIXVC packages from the XVDD kernel driver.
+Dump the CIK (Content Integrity Key) for current registered MSIXVC packages from the XVDD kernel driver.
 
-## Usage
+## Usage (REQUIRES ADMINISTRATOR!)
 ```
-usage: xvddkeyslotutil --help=string [options] ...
+usage: xvddkeyslotutil [options] ...
 options:
-  -h, --help      print usage (string)
+  -h, --help      print usage
   -o, --output    output path for *.cik files
   -d, --kb        kernel-bridge driver path (to kernel-bridge.sys)
+
+example:
+      xvddkeyslotutil --output "E:\CIK" --kb "E:\Kernel-Bridge\Kernel-Bridge.sys"
 ```
 
 ## Decryption & Extraction
 
 Use [xvdtool by emoose](https://github.com/emoose/xvdtool).
-
-## Contributions
-### [Billy Hulbert](https://github.com/billyhulbert)
-#### Reverse engineering XVDD.sys and writing PoC
-### [tuxuser](https://github.com/tuxuser)
-#### Assisting with reverse engineering, previous research and extending the command line application
-### [emoose](https://github.com/emoose)
-#### Work done with xvdtool and deciphering MSIXVC caveats
