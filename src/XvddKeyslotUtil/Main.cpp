@@ -110,9 +110,13 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    // Currently using xvdd.sys ver: 10.0.19041.3952
-    XvddKeyslotAddress = static_cast<char*>(XvddBaseAddress) + 0x72530;
-    XvddGuidSlotAddress = static_cast<char*>(XvddBaseAddress) + 0x71144;
+    // 10.0.19041.3952
+    //XvddKeyslotAddress = static_cast<char*>(XvddBaseAddress) + 0x72530;
+    //XvddGuidSlotAddress = static_cast<char*>(XvddBaseAddress) + 0x71144;
+
+    // 10.0.19041.5411
+    XvddKeyslotAddress = static_cast<char*>(XvddBaseAddress) + 0x72580;
+    XvddGuidSlotAddress = static_cast<char*>(XvddBaseAddress) + 0x71194;
 
     std::cout << "[+] Fetching GUID slot table..." << std::endl;
 
