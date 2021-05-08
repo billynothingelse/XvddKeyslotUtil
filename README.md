@@ -29,3 +29,9 @@ xvdtool -nd -eu -cik "33EC8436-5A0E-4F0D-B1CE-3F29C3955039" -cikfile "E:\CIK\33E
 # Extract 
 xvdtool -nd -xf "E:\Game\DemoGameExt" ""E:\Game\DemoGame.msixvc"
 ```
+
+## Changelog
+
+### [v0.0.1] - 2020-10-01
+
+- Initial release (GamingServices 10.0.19041.3952)
