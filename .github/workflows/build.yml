@@ -1,0 +1,143 @@
+name: MSBuild
+
+on: [push]
+
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: XvddKeyslotUtil.sln
+
+  # Configuration type and platform to build.
+  BUILD_CONFIGURATION: Release
+  BUILD_PLATFORM: x64
+
+  # Kernel-Bridge parameters
+  KB_DRIVER_RELEASE_ZIP_URL: https://github.com/HoShiMin/Kernel-Bridge/releases/latest/download/Kernel-Bridge.zip
+  KB_EXTRACT_DRIVER_PATH: x64/Release
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      AssemblySemFileVer: ${{ steps.gitversion.outputs.assemblySemFileVer }}
+      AssemblySemVer: ${{ steps.gitversion.outputs.assemblySemVer }}
+      SemVer: ${{ steps.gitversion.outputs.semVer }}
+      ShortSha: ${{ steps.gitversion.outputs.shortSha }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.9
+        with:
+          versionSpec: x # Latest
+      - name: Use GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0.9.9
+
+  prepare_kernelbridge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Kernel Bridge
+        run: |
+          wget ${{env.KB_DRIVER_RELEASE_ZIP_URL}}
+      - name: Extract archive
+        run: |
+          unzip Kernel-Bridge.zip
+      - name: Upload kernel bridge drivers
+        uses: actions/upload-artifact@v2
+        with:
+          name: KernelBridgeDrivers
+          path: ${{env.KB_EXTRACT_DRIVER_PATH}}/Kernel-Bridge.*
+          if-no-files-found: error
+
+  build:
+    runs-on: windows-latest
+    needs: prepare
+
+    outputs:
+      SemVer: ${{needs.prepare.outputs.SemVer}}
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Prepare version.h
+      env:
+        VERSION_HEADER: ${{github.workspace}}\src\XvddKeyslotUtil\version.h
+      run: |
+        Set-Content -Path ${{env.VERSION_HEADER}} -Value '#pragma once'
+        Add-Content -Path ${{env.VERSION_HEADER}} -Value "$([string]::Concat('#define XVDD_KEYSLOT_UTIL_VERSION "',${{ needs.prepare.outputs.assemblySemFileVer }},'"'))"
+        Add-Content -Path ${{env.VERSION_HEADER}} -Value "$([string]::Concat('#define COMPILE_TIME "',$(Get-Date -Format "yyyy-MM-dd HH:mm"),'"'))"
+        Get-Content -Path ${{env.VERSION_HEADER}}
+
+    - name: Build
+      run: |
+        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.BUILD_PLATFORM}} ${{env.SOLUTION_FILE_PATH}}
+    
+    - name: Upload built binary artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: XvddKeyslotUtilBinary
+        path: ${{github.workspace}}\bin\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}}\XvddKeyslotUtil.exe
+        if-no-files-found: error
+
+  pack_archive:
+    runs-on: ubuntu-latest
+
+    needs: [prepare_kernelbridge, build]
+    
+    outputs:
+      ReleaseName: XvddKeyslotUtil-${{needs.build.outputs.SemVer}}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Download built binary
+        uses: actions/download-artifact@v2
+        with:
+          name: XvddKeyslotUtilBinary
+      - name: Download Kernel Bridge drivers
+        uses: actions/download-artifact@v2
+        with:
+          name: KernelBridgeDrivers
+      - name: Dump filetree artifacts
+        run: |
+          find .
+      - name: Create release folder
+        run: |
+          mkdir release
+          cp README.md release/
+          cp Kernel-Bridge.{sys,inf} release/
+          cp XvddKeyslotUtil.exe release/
+      - name: Upload built binary artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: XvddKeyslotUtil-${{needs.build.outputs.SemVer}}
+          path: release/*
+          if-no-files-found: error
+
+  draft_release:
+    runs-on: ubuntu-latest
+    needs: pack_archive
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: ${{needs.pack_archive.outputs.ReleaseName}}
+    - name: Print final version
+      run: |
+        echo "Releasing ${{needs.pack_archive.outputs.ReleaseName}}"
+    - name: Generate zip
+      run: zip -j ${{needs.pack_archive.outputs.ReleaseName}}.zip *
+    - name: Create release (on tag)
+      uses: softprops/action-gh-release@e99df7cd8088d9c5dddab02bf975f62025a6e760
+      with:
+        name: Release ${{needs.pack_archive.outputs.ReleaseName}}
+        tag_name: ${{ github.ref }}
+        files: '${{needs.pack_archive.outputs.ReleaseName}}.zip'
+        fail_on_unmatched_files: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
