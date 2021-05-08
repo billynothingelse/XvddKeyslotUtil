@@ -69,7 +69,7 @@ jobs:
         VERSION_HEADER: ${{github.workspace}}\src\XvddKeyslotUtil\version.h
       run: |
         Set-Content -Path ${{env.VERSION_HEADER}} -Value '#pragma once'
-        Add-Content -Path ${{env.VERSION_HEADER}} -Value "$([string]::Concat('#define XVDD_KEYSLOT_UTIL_VERSION "',${{ needs.prepare.outputs.assemblySemFileVer }},'"'))"
+        Add-Content -Path ${{env.VERSION_HEADER}} -Value "$([string]::Concat('#define XVDD_KEYSLOT_UTIL_VERSION "','${{needs.prepare.outputs.AssemblySemFileVer}}','"'))"
         Add-Content -Path ${{env.VERSION_HEADER}} -Value "$([string]::Concat('#define COMPILE_TIME "',$(Get-Date -Format "yyyy-MM-dd HH:mm"),'"'))"
         Get-Content -Path ${{env.VERSION_HEADER}}
 
