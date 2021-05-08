@@ -30,6 +30,7 @@ static const BYTE s_DevTestCikGuidBytes[16] = {
 
 static std::map<intptr_t, std::string> s_KeytableAddressMap {
     {0x71144, "10.0.19041.3952"},
+    {0x72194, "10.0.19041.5035"},
     {0x71194, "10.0.19041.5411"}
 };
 
@@ -125,6 +126,8 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
         std::cout << "[-] No valid keytable found!" << std::endl;
         return -1;
     }
+
+    std::cout << "[*] Valid keytable found! Address: 0x" << std::hex << finalAddress << std::endl;
 
     auto knownDriverVersion = s_KeytableAddressMap.find(finalAddress);
     if (knownDriverVersion != s_KeytableAddressMap.end()) {
