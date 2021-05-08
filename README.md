@@ -1,6 +1,12 @@
 # XvddKeyslotUtil
 Dump the CIK (Content Integrity Key) for registered MSIXVC packages that are from the Xbox app on Windows 10. By utilising Kernel-Bridge, this utility directly reads the keyslot table belonging to XVDD, the Xbox Virtual Disk Driver, and store the key data into a file format - for usage with xvdtool.
 
+## Gaming services
+
+ProductID: `9mwpm2cqnlhn`
+
+PFN: `Microsoft.GamingServices_8wekyb3d8bbwe`
+
 ## Usage (REQUIRES ADMINISTRATOR!)
 ```
 usage: xvddkeyslotutil [options] ...
