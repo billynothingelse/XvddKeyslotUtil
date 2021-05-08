@@ -34,6 +34,11 @@ static std::map<intptr_t, std::string> s_KeytableAddressMap {
     {0x71194, "10.0.19041.5411"}
 };
 
+int exit_fail() {
+    KbDeleteDriver(s_KbDriverName);
+    return -1;
+}
+
 int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDriverPath)
 {
     PVOID XvddBaseAddress = NULL;
@@ -68,7 +73,7 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
         std::cout << "[-] Unable to open Kernel-Bridge handle! "
             << "Make sure the driver is enabled and running."
             << std::endl;
-        return -1;
+        return exit_fail();
     }
 
     std::cout << "[+] Getting " << XVDD_DRIVER_NAME << " base address..." << std::endl;
@@ -76,14 +81,14 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
         std::cout << "[-] Unable to get XVDD.sys image base! "
             << "Is GamingServices (ProductId: 9mwpm2cqnlhn) installed?"
             << std::endl;
-        return -1;
+        return exit_fail();
     }
     std::cout << "[*] XVDD.sys base address: 0x" << std::hex << XvddBaseAddress << std::endl;
 
     std::cout << "[+] Dumping xvdd.sys memory from kernel-space..." << std::endl;
     if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(&XvddMemory), XvddBaseAddress, sizeof(XvddMemory))) {
         std::cout << "[-] Failed to read xvdd.sys memory!" << std::endl;
-        return -1;
+        return exit_fail();
     }
 
     std::cout << "[+] Searching for keytable candidates in memory dump..." << std::endl;
@@ -96,7 +101,7 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
 
     if (possibleKeytableAddresses.size() == 0) {
         std::cout << "[-] Did not find any keytable candidate!" << std::endl;
-        return -1;
+        return exit_fail();
     }
 
     intptr_t finalAddress = NULL;
@@ -106,7 +111,7 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
         std::cout << "[+] Fetching Keytable candidate from 0x" << std::hex << tmpAddr << " (rel. 0x" << std::hex << relativeAddress << ") ..." << std::endl;
         if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(&KeyTable), tmpAddr, sizeof(KeyTable))) {
             std::cout << "[-] Failed to fetch Key table!" << std::endl;
-            return -1;
+            return exit_fail();
         }
 
         if (GuidToString(KeyTable.Guids[0].EncryptionKeyGUID) != s_DevTestCikGuid || 
@@ -124,7 +129,7 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
 
     if (finalAddress == NULL) {
         std::cout << "[-] No valid keytable found!" << std::endl;
-        return -1;
+        return exit_fail();
     }
 
     std::cout << "[*] Valid keytable found! Address: 0x" << std::hex << finalAddress << std::endl;
@@ -173,6 +178,7 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
 
     // Cleanup
     delete &KeyTable;
+    KbDeleteDriver(s_KbDriverName);
 
     return 0;
 }
