@@ -148,12 +148,12 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
         }
         GuidSlotCount++;
     }
-    std::cout << "[+] Found " << GuidSlotCount << " Key slots!" << std::endl;
+    std::cout << "[+] Found " << std::dec << GuidSlotCount << " Key slots!" << std::endl;
 
     std::cout << "[*] Keyslots:" << std::endl;
     // Iterate through each slot and fetch keys
     for (int i = 0; i < GuidSlotCount; i++) {
-        std::cout << "Encryption GUID Slot: " << i << std::endl;
+        std::cout << "Encryption GUID Slot: " << std::dec << i << std::endl;
         std::cout << "GUID: " << GuidToString(KeyTable.Guids[i].EncryptionKeyGUID) << std::endl;
         SCP_KEY_DATA DataKey = KeyTable.KeySlots[i].KeyDataBegin[0];
         print_bytes("Data Key", DataKey.Data, sizeof(SCP_KEY_DATA));
@@ -177,7 +177,6 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
     }
 
     // Cleanup
-    delete &KeyTable;
     KbDeleteDriver(s_KbDriverName);
 
     return 0;
