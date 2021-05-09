@@ -32,6 +32,13 @@ xvdtool -nd -xf "E:\Game\DemoGameExt" ""E:\Game\DemoGame.msixvc"
 
 ## Changelog
 
+### [v1.0.0] - 2021-05-09
+
+- Added offsets for: 10.0.19041.5035, 10.0.19041.5411
+- Implemented heuristic detection of keytables in memory
+- More verbosity in logging
+- Stop Kernel-Bridge driver before program exits
+
 ### [v0.0.1] - 2020-10-01
 
 - Initial release (GamingServices 10.0.19041.3952)
