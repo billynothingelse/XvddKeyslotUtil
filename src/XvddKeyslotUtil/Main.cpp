@@ -17,7 +17,12 @@
 #define UTIL_NAME "XvddKeyslotUtil"
 #define XVDD_DRIVER_NAME "xvdd.sys"
 // Size to dump from xvdd.sys kernel memory to find keytable
-#define XVDD_DRIVER_DUMP_SIZE 0x80000
+#define XVDD_DRIVER_DUMP_SIZE 0x85000
+
+static BYTE s_XvddMemory[XVDD_DRIVER_DUMP_SIZE] = { 0 };
+static SCP_KEY_TABLE s_KeyTable = { 0 };
+
+HANDLE g_hDriver = INVALID_HANDLE_VALUE;
 
 static std::string s_DevTestCikGuid = "33EC8436-5A0E-4F0D-B1CE-3F29C3955039";
 static const BYTE s_DevTestCikGuidBytes[16] = {
@@ -35,7 +40,8 @@ static std::map<intptr_t, std::string> s_KeytableAddressMap {
     {0x751D4, "10.0.19041.6628"},
     {0x781F4, "10.0.19041.7129"},
     {0x791F4, "10.0.19041.7495"},
-    {0x79234, "10.0.22000.1040"}
+    {0x79234, "10.0.22000.1040"},
+    {0x812E4, "10.0.22000.2728"}
 };
 
 int exit_fail() {
@@ -46,12 +52,10 @@ int exit_fail() {
 int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDriverPath)
 {
     PVOID XvddBaseAddress = NULL;
+    ULONG XvddImageSize = NULL;
     std::vector<intptr_t> possibleKeytableAddresses{};
 
-    BYTE XvddMemory[XVDD_DRIVER_DUMP_SIZE] = {0};
-
     int GuidSlotCount = 0;
-    SCP_KEY_TABLE KeyTable = {0};
 
     std::string tmpdriverPath = kbDriverPath.string();
     std::wstring wstrDriverPath = std::wstring(tmpdriverPath.begin(), tmpdriverPath.end());
@@ -71,9 +75,9 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
     }
 
     std::cout << "[+] Opening Kernel-Bridge handle..." << std::endl;
-    HANDLE hDriver = KbOpenHandle();
+    g_hDriver = KbOpenHandle();
 
-    if (hDriver == INVALID_HANDLE_VALUE) {
+    if (g_hDriver == INVALID_HANDLE_VALUE) {
         std::cout << "[-] Unable to open Kernel-Bridge handle! "
             << "Make sure the driver is enabled and running."
             << std::endl;
@@ -81,23 +85,24 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
     }
 
     std::cout << "[+] Getting " << XVDD_DRIVER_NAME << " base address..." << std::endl;
-    if (!GetKernelModuleBase(XVDD_DRIVER_NAME, &XvddBaseAddress)) {
+    if (!GetKernelModuleBase(XVDD_DRIVER_NAME, &XvddBaseAddress, XvddImageSize)) {
         std::cout << "[-] Unable to get XVDD.sys image base! "
             << "Is GamingServices (ProductId: 9mwpm2cqnlhn) installed?"
             << std::endl;
         return exit_fail();
     }
     std::cout << "[*] XVDD.sys base address: 0x" << std::hex << XvddBaseAddress << std::endl;
+    std::cout << "[*] XVDD.sys image size: 0x" << std::hex << XvddImageSize << std::endl;
 
     std::cout << "[+] Dumping xvdd.sys memory from kernel-space..." << std::endl;
-    if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(&XvddMemory), XvddBaseAddress, sizeof(XvddMemory))) {
+    if (!ReadKernelMemory(g_hDriver, reinterpret_cast<PVOID>(s_XvddMemory), XvddBaseAddress, sizeof(s_XvddMemory))) {
         std::cout << "[-] Failed to read xvdd.sys memory!" << std::endl;
         return exit_fail();
     }
 
     std::cout << "[+] Searching for keytable candidates in memory dump..." << std::endl;
-    for (int i=0; i < (XVDD_DRIVER_DUMP_SIZE - 16); i += 4) {
-        if (!memcmp(&XvddMemory[i], s_DevTestCikGuidBytes, 16)) {
+    for (int i=0; i < (XvddImageSize - 16); i += 4) {
+        if (!memcmp(&s_XvddMemory[i], s_DevTestCikGuidBytes, 16)) {
             std::cout << "[*] Found possible Keytable candidate @ 0x" << std::hex << i << std::endl;
             possibleKeytableAddresses.push_back((uintptr_t)i);
         }
@@ -113,15 +118,15 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
 
         PVOID tmpAddr = (PVOID)((PCHAR)XvddBaseAddress + relativeAddress);
         std::cout << "[+] Fetching Keytable candidate from 0x" << std::hex << tmpAddr << " (rel. 0x" << std::hex << relativeAddress << ") ..." << std::endl;
-        if (!ReadKernelMemory(hDriver, reinterpret_cast<PVOID>(&KeyTable), tmpAddr, sizeof(KeyTable))) {
+        if (!ReadKernelMemory(g_hDriver, reinterpret_cast<PVOID>(&s_KeyTable), tmpAddr, sizeof(s_KeyTable))) {
             std::cout << "[-] Failed to fetch Key table!" << std::endl;
             return exit_fail();
         }
 
-        if (GuidToString(KeyTable.Guids[0].EncryptionKeyGUID) != s_DevTestCikGuid || 
-            KeyTable.KeySlots[0].KeyDataBegin[0].Data[0] != 0x9A ||
-            KeyTable.KeySlots[0].KeyDataBegin[0].Data[1] != 0xB6 ||
-            KeyTable.KeySlots[0].KeyDataBegin[0].Data[2] != 0xDC
+        if (GuidToString(s_KeyTable.Guids[0].EncryptionKeyGUID) != s_DevTestCikGuid ||
+            s_KeyTable.KeySlots[0].KeyDataBegin[0].Data[0] != 0x9A ||
+            s_KeyTable.KeySlots[0].KeyDataBegin[0].Data[1] != 0xB6 ||
+            s_KeyTable.KeySlots[0].KeyDataBegin[0].Data[2] != 0xDC
         )  {
             // std::cout << "[-] First GUID in Key table does not match expected DevTest (RED)" << std::endl;
             continue;
@@ -136,17 +141,18 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
         return exit_fail();
     }
 
-    std::cout << "[*] Valid keytable found! Address: 0x" << std::hex << finalAddress << std::endl;
-
     auto knownDriverVersion = s_KeytableAddressMap.find(finalAddress);
     if (knownDriverVersion != s_KeytableAddressMap.end()) {
         std::cout << "[*] GamingServices version: " << knownDriverVersion->second << std::endl;
-    } else {
+    }
+    else {
         std::cout << "[*] UNKNOWN GamingServices version!" << std::endl;
     }
 
+    std::cout << "[*] Valid keytable found! Address: 0x" << std::hex << finalAddress << std::endl;
+
     // Determine current loaded license count
-    for (auto guid : KeyTable.Guids) {
+    for (auto guid : s_KeyTable.Guids) {
         if (guid.EncryptionKeyGUID == GUID_NULL) {
             break;
         }
@@ -158,14 +164,14 @@ int extract_keys(std::filesystem::path outputPath, std::filesystem::path kbDrive
     // Iterate through each slot and fetch keys
     for (int i = 0; i < GuidSlotCount; i++) {
         std::cout << "Encryption GUID Slot: " << std::dec << i << std::endl;
-        std::cout << "GUID: " << GuidToString(KeyTable.Guids[i].EncryptionKeyGUID) << std::endl;
-        SCP_KEY_DATA DataKey = KeyTable.KeySlots[i].KeyDataBegin[0];
+        std::cout << "GUID: " << GuidToString(s_KeyTable.Guids[i].EncryptionKeyGUID) << std::endl;
+        SCP_KEY_DATA DataKey = s_KeyTable.KeySlots[i].KeyDataBegin[0];
         print_bytes("Data Key", DataKey.Data, sizeof(SCP_KEY_DATA));
-        SCP_KEY_DATA TweakKey = KeyTable.KeySlots[i].KeyDataEnd[0];
+        SCP_KEY_DATA TweakKey = s_KeyTable.KeySlots[i].KeyDataEnd[0];
         print_bytes("Tweak Key", TweakKey.Data, sizeof(SCP_KEY_DATA));
 
         SCP_LICENSE exportLicense = { 0 };
-        exportLicense.KeyGUID = KeyTable.Guids[i].EncryptionKeyGUID;
+        exportLicense.KeyGUID = s_KeyTable.Guids[i].EncryptionKeyGUID;
         exportLicense.DataKey = DataKey;
         exportLicense.TweakKey = TweakKey;
 

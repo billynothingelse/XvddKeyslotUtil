@@ -28,7 +28,7 @@ typedef struct _RTL_PROCESS_MODULES
     RTL_PROCESS_MODULE_INFORMATION Modules[1];
 } RTL_PROCESS_MODULES, * PRTL_PROCESS_MODULES;
 
-BOOL GetKernelModuleBase(IN const char* ModuleName, OUT LPVOID* lpAddr)
+BOOL GetKernelModuleBase(IN const char* ModuleName, OUT LPVOID* lpAddr, OUT ULONG& pulImageSize)
 {
     NTSTATUS Status = STATUS_INVALID_HANDLE;
 
@@ -46,6 +46,7 @@ BOOL GetKernelModuleBase(IN const char* ModuleName, OUT LPVOID* lpAddr)
             CONST USHORT OffsetToFileName = ModuleInfo->Modules[i].OffsetToFileName;
             if (!strncmp((const char*)&ModuleInfo->Modules[i].FullPathName[OffsetToFileName], ModuleName, 4)) {
                 *lpAddr = ModuleInfo->Modules[i].ImageBase;
+                pulImageSize = ModuleInfo->Modules[i].ImageSize;
                 break;
             }
         }
